@@ -19,6 +19,7 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
 import org.traccar.BaseProtocolDecoder;
+import org.traccar.helper.BitUtil;
 import org.traccar.session.DeviceSession;
 import org.traccar.NetworkMessage;
 import org.traccar.Protocol;
@@ -37,6 +38,11 @@ public class GatorProtocolDecoder extends BaseProtocolDecoder {
     }
 
     public static final int MSG_HEARTBEAT = 0x21;
+    public static final int MSG_POSITION_REQUEST = 0x30;
+    public static final int MSG_OVERSPEED_ALARM = 0x3F;
+    public static final int MSG_RESET_MILEAGE = 0x6B;
+    public static final int MSG_RESTORE_OIL_DUCT = 0x38;
+    public static final int MSG_CLOSE_OIL_DUCT = 0x39;
     public static final int MSG_POSITION_DATA = 0x80;
     public static final int MSG_ROLLCALL_RESPONSE = 0x81;
     public static final int MSG_ALARM_DATA = 0x82;
@@ -126,6 +132,16 @@ public class GatorProtocolDecoder extends BaseProtocolDecoder {
             position.set(Position.PREFIX_ADC + 2, buf.readUnsignedByte() + buf.readUnsignedByte() * 0.01);
 
             position.set(Position.KEY_ODOMETER, buf.readUnsignedInt());
+
+            if (type == MSG_ALARM_DATA) {
+                int alarm1 = buf.readUnsignedByte();
+                position.addAlarm(BitUtil.check(alarm1, 0) ? Position.ALARM_BRAKING : null);
+                position.addAlarm(BitUtil.check(alarm1, 5) ? Position.ALARM_ACCELERATION : null);
+
+                int alarm2 = buf.readUnsignedByte();
+                position.addAlarm(BitUtil.check(alarm2, 1) ? Position.ALARM_OVERSPEED : null);
+                position.addAlarm(BitUtil.check(alarm2, 4) ? Position.ALARM_CORNERING : null);
+            }
 
             return position;
         }
